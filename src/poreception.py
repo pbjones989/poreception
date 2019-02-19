@@ -199,23 +199,24 @@ class GraphWindow(tk.Toplevel):
 
     def line_select_callback(self, eclick, erelease):
         if self.isBox.get():
-            x1, y1 = eclick.xdata, eclick.ydata
-            x2, y2 = erelease.xdata, erelease.ydata
+            x_1, y_1 = eclick.xdata, eclick.ydata
+            x_2, y_2 = erelease.xdata, erelease.ydata
             for i in range(0, len(self.runs.index)):
                 index = int(self.runs.iloc[i, :].name)
                 row = self.original_runs.iloc[index, :]
-                if row[self.xaxis] >= x1 and row[self.xaxis] <= x2 and row[self.yaxis] >= y1 and row[self.yaxis] <= y2:
+                if row[self.xaxis] >= x_1 and row[self.xaxis] <= x_2 and row[self.yaxis] >= y_1 and row[self.yaxis] <= y_2:
                     self.testSelectPoints.add(index)
             self.update()
 
     def delete_channel(self):
-        name = int(self.deleteChannel.get())
-        if name in self.data.groups:
-            oldData = self.data
-            oldRuns = self.runs
-            self.runs = self.data.filter(lambda x : x.name != name)
-            self.data = self.runs.groupby('channel')
-            self.previousDataSets.append((oldData, oldRuns))
+        to_delete = [int(name.strip()) for name in self.deleteChannel.get().split(',')]
+        for name in to_delete:
+            if name in self.data.groups:
+                oldData = self.data
+                oldRuns = self.runs
+                self.runs = self.data.filter(lambda x : x.name != name)
+                self.data = self.runs.groupby('channel')
+                self.previousDataSets.append((oldData, oldRuns))
         self.update_lines()
 
     def delete_unselected(self):
@@ -342,7 +343,7 @@ class RawDataWindow(tk.Toplevel):
         N = len(event.ind)
         if not N:
             return True
-        
+
         todeleteRaw = self.rawLines[index][0]
         todeleteLog = self.logLines[index][0]
         self.rawLines.pop(index, None)
@@ -353,7 +354,7 @@ class RawDataWindow(tk.Toplevel):
         self.parent.update()
         self.fig.canvas.draw()
         self.update_axes()
-    
+
     def addDataToParent(self):
         for index in self.rawLines.keys():
             self.parent.testSelectPoints.add(index)
@@ -366,14 +367,14 @@ class RawDataWindow(tk.Toplevel):
         self.parent.update()
 
     def update_axes(self):
-        maxY = max([max(self.raw_data[index]) for index in self.rawLines.keys()])
-        maxX = max([len(self.raw_data[index]) for index in self.rawLines.keys()])
-        minX = 0
-        minY = min([min(self.raw_data[index]) for index in self.rawLines.keys()])
-        xDif = (maxX - minX) / 10
-        yDif = (maxY - minY) / 10
-        self.ax[0].set_xlim(minX - xDif, maxX + xDif)
-        self.ax[0].set_ylim(minY - yDif, maxY + yDif)
+        max_y = max([max(self.raw_data[index]) for index in self.rawLines])
+        max_x = max([len(self.raw_data[index]) for index in self.rawLines])
+        min_x = 0
+        min_y = min([min(self.raw_data[index]) for index in self.rawLines])
+        x_dif = (max_x - min_x) / 10
+        y_dif = (max_y - min_y) / 10
+        self.ax[0].set_xlim(min_x - x_dif, max_x + x_dif)
+        self.ax[0].set_ylim(min_y - y_dif, max_y + y_dif)
         self.fig.canvas.draw()
 
 
