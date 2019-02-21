@@ -24,9 +24,9 @@ class ControlPanel(tk.Frame):
         self.df_channels = df_runs.groupby('channel')
         self.root = parent
         self.root.title("Control Panel")
-        self.showGraph_button = tk.Button(self, text = 'Show Graph', width = 25, command = self.show_graph)
-        self.showGraph_button.pack()
-        
+        self.show_graph_button = tk.Button(self, text='Show Graph', width=25, command=self.show_graph)
+        self.show_graph_button.pack()
+
     def show_graph(self):
         self.browser = GraphWindow(self, self.df_channels, self.original_raw, self.original_data)
 
@@ -35,34 +35,58 @@ class HistogramWindow(tk.Toplevel):
     def __init__(self, parent, df_runs, *args, **kwargs):
         tk.Toplevel.__init__(self, parent, *args, **kwargs)
         self.parent = parent
-        self.data = df_runs            
+        self.data = df_runs
         self.fig, self.ax = plt.subplots()
-        self.counts, self.bins, self.bars = self.ax.hist(df_runs['channel'], bins = 512)
+        self.x_statistic = 'channel'
+        self.counts, self.bins, self.bars = self.ax.hist(df_runs[self.x_statistic], edgecolor='black', bins=512)
+
+
+        hist_var = tk.StringVar()
+        hist_var.set(self.x_statistic)
+        options = {'channel', 'mean', 'stdv', 'median', 'max', 'min'}
+        self.histogram_select = tk.OptionMenu(self, hist_var, *options, command=self.change_histogram)
+        self.histogram_select.pack()
 
         canvas = FigureCanvasTkAgg(self.fig, self)
         canvas.draw()
         canvas.get_tk_widget().pack(side=tk.BOTTOM, fill=tk.BOTH, expand=True)
         toolbar = NavigationToolbar2Tk(canvas, self)
-        toolbar.update()  
+        toolbar.update()
 
-        self.channel_label = self.ax.text(0.8, 0.8, 'channel: ', verticalalignment='center', 
+        self.data_label = self.ax.text(0.8, 0.8, self.x_statistic + ': ', verticalalignment='center',
                                           horizontalalignment='center', transform=self.ax.transAxes)
         self.fig.canvas.mpl_connect("motion_notify_event", self.hover)
-    
+
     def hover(self, event):
         for bar in self.bars:
             cont, ind = bar.contains(event)
             if cont:
-                self.channel_label.set_text('channel: ' + str(self.bars.index(bar) + 1))
+                label = ''
+                if self.x_statistic == 'channel':
+                    label = str(self.bars.index(bar) + 1)
+                else:
+                    label = str(round(self.bins[self.bars.index(bar)],2))
+                self.data_label.set_text(self.x_statistic + ': ' + label)
                 self.fig.canvas.draw()
 
+    def change_histogram(self, new_value):
+        self.ax.cla()
+        print('here')
+        self.x_statistic = new_value
+        if (self.x_statistic == 'channel'):
+            self.counts, self.bins, self.bars = self.ax.hist(df_runs[self.x_statistic], edgecolor='black', bins=512)
+        else:
+            self.counts, self.bins, self.bars = self.ax.hist(df_runs[self.x_statistic], edgecolor='black', bins=20)
 
+        self.data_label = self.ax.text(0.8, 0.8, self.x_statistic + ': ', verticalalignment='center',
+                                          horizontalalignment='center', transform=self.ax.transAxes)
+        self.fig.canvas.draw()
 
 class GraphWindow(tk.Toplevel):
     def __init__(self, parent, df_channels, raw_data, df_runs, *args, **kwargs):
         tk.Toplevel.__init__(self, parent, *args, **kwargs)
         self.parent = parent
-        
+
         self.xaxis = 'mean'
         self.yaxis = 'stdv'
         varX = tk.StringVar()
@@ -90,7 +114,7 @@ class GraphWindow(tk.Toplevel):
         self.export_path = tk.Entry(self.control_panel)
 
         self.export_description = tk.Label(self.control_panel, text="Path to export to (including name)")
-        
+
         self.deleteButton.pack()
         self.deleteChannel.pack()
         self.undoButton.pack()
@@ -129,7 +153,7 @@ class GraphWindow(tk.Toplevel):
             line, = self.ax.plot(group[self.xaxis], group[self.yaxis], 'o', ms=3, alpha=.3, picker=2, label=channel)
             self.lines.append(line)
         self.ax.set_xlabel(self.xaxis)
-        self.ax.set_ylabel(self.yaxis)        
+        self.ax.set_ylabel(self.yaxis)
         canvas = FigureCanvasTkAgg(self.fig, self.graph)
         canvas.draw()
         canvas.get_tk_widget().pack(side=tk.BOTTOM, fill = 'both', expand = True)
@@ -273,7 +297,7 @@ class GraphWindow(tk.Toplevel):
             else:
                 line.set_data([], [])
         self.update()
-    
+
     def update_x_axis(self, new_value):
         self.xaxis = new_value
         self.update_axes()
@@ -311,7 +335,7 @@ class RawDataWindow(tk.Toplevel):
         self.parent = parent
 
         self.raw_data = raw_data
-        
+
         self.hideFromScatter = tk.Button(self, text='Hide from Scatter', width=15, command=self.removeDataFromParent)
         self.showOnScatter = tk.Button(self, text='Show on Scatter', width=15, command=self.addDataToParent)
         self.hideFromScatter.pack()
@@ -378,7 +402,7 @@ class RawDataWindow(tk.Toplevel):
         self.fig.canvas.draw()
 
 
-        
+
 def proper_exit():
     root.quit()
     root.destroy()
