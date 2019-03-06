@@ -1,7 +1,9 @@
 import sys
 import os
 import tkinter as tk
+from tkinter import messagebox
 import numpy as np
+import pandas as pd
 import matplotlib
 matplotlib.use("TkAgg")
 from tkinter.filedialog import askopenfilename
@@ -27,17 +29,21 @@ class ControlPanel(tk.Frame):
 
     def show_graph(self):
         if self.data_sets:
-            summary_data = np.load(self.data_sets[0].summary_directory, encoding = 'latin1')
-            if isinstance(summary_data['channel'][0], str):
-                summary_data['channel'] = summary_data['channel'].map(lambda s: int(s[8:]))
+            summary_data = pd.DataFrame()
             raw_data = []
-            raw_data.extend(np.load(self.data_sets[0].raw_directory, encoding = 'latin1').tolist())
-            for menu_option in self.data_sets[1:]:
-                new_summary = np.load(menu_option.summary_directory, encoding = 'latin1')
-                if isinstance(new_summary['channel'][0], str):
-                    new_summary['channel'] = new_summary['channel'].map(lambda s: int(s[8:]))
-                summary_data = summary_data.append(new_summary)
-                raw_data.extend(np.load(menu_option.raw_directory, encoding = 'latin1').tolist())
+            for menu_option in self.data_sets:
+                if os.path.exists(menu_option.summary_directory) and os.path.exists(menu_option.raw_directory):
+                    new_summary = np.load(menu_option.summary_directory, encoding = 'latin1')
+                    if isinstance(new_summary['channel'][0], str):
+                        new_summary['channel'] = new_summary['channel'].map(lambda s: int(s[8:]))
+                    summary_data = summary_data.append(new_summary)
+                    raw_data.extend(np.load(menu_option.raw_directory, encoding = 'latin1').tolist())
+                else:
+                    messagebox.showinfo("No File Found",
+                            "Could not find data files\n    given summary: "
+                            + menu_option.summary_directory +
+                            "\n    given raw: " + menu_option.raw_directory)
+                    return
             summary_data = summary_data.reset_index(drop=True)
             GraphWindow(self, summary_data, np.asarray(raw_data))
 
