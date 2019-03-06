@@ -1,35 +1,99 @@
 import sys
-import numpy as np
-import statistics as stats
-import math
-
+import os
 import tkinter as tk
-from tkinter import messagebox
-
+import numpy as np
 import matplotlib
 matplotlib.use("TkAgg")
+from tkinter.filedialog import askopenfilename
 from matplotlib.widgets import RectangleSelector
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
-from matplotlib.figure import Figure
 
 
 class ControlPanel(tk.Frame):
-    def __init__(self, parent, df_runs, raw_data, *args, **kwargs):
+    def __init__(self, parent, *args, **kwargs):
         tk.Frame.__init__(self, parent, *args, **kwargs)
-        self.original_data = df_runs
-        self.original_raw = raw_data
-        if (isinstance(self.original_data['channel'][0], str)):
-            self.original_data['channel'] = self.original_data['channel'].map(lambda s: int(s[8:]))
-        self.df_channels = df_runs.groupby('channel')
         self.root = parent
-        self.root.title("Control Panel")
-        self.show_graph_button = tk.Button(self, text='Show Graph', width=25, command=self.show_graph)
-        self.show_graph_button.pack()
+        self.root.title("Set Up")
+        self.show_graph_button = tk.Button(self, text='Show Graph',
+                                           command=self.show_graph)
+        self.show_graph_button.grid(row=0)
+        self.add_data_button = tk.Button(self, text='Add Data Set', command=self.add_data_set)
+        self.remove_data_button = tk.Button(self, text='Remove Data Set', command=self.remove_data_set)
+        self.add_data_button.grid(row=0, column=1)
+        self.remove_data_button.grid(row=0, column=2)
+        self.data_sets = []
+        self.data_row = 1
 
     def show_graph(self):
-        self.browser = GraphWindow(self, self.df_channels, self.original_raw, self.original_data)
+        if self.data_sets:
+            summary_data = np.load(self.data_sets[0].summary_directory, encoding = 'latin1')
+            if isinstance(summary_data['channel'][0], str):
+                summary_data['channel'] = summary_data['channel'].map(lambda s: int(s[8:]))
+            raw_data = []
+            raw_data.extend(np.load(self.data_sets[0].raw_directory, encoding = 'latin1').tolist())
+            for menu_option in self.data_sets[1:]:
+                new_summary = np.load(menu_option.summary_directory, encoding = 'latin1')
+                if isinstance(new_summary['channel'][0], str):
+                    new_summary['channel'] = new_summary['channel'].map(lambda s: int(s[8:]))
+                summary_data = summary_data.append(new_summary)
+                raw_data.extend(np.load(menu_option.raw_directory, encoding = 'latin1').tolist())
+            summary_data = summary_data.reset_index(drop=True)
+            GraphWindow(self, summary_data, np.asarray(raw_data))
 
+    def add_data_set(self):
+        new_menu_option = MenuOptions(self)
+        new_menu_option.grid(row=self.data_row, columnspan=3)
+        self.data_row += 1
+        self.data_sets.append(new_menu_option)
+
+    def remove_data_set(self):
+        if self.data_sets:
+            old_menu_option = self.data_sets.pop()
+            old_menu_option.grid_forget()
+            old_menu_option.destroy()
+            self.data_row -= 1
+
+class MenuOptions(tk.Frame):
+    def __init__(self, parent, *args, **kwargs):
+        tk.Frame.__init__(self, parent, *args, **kwargs)
+        self.summary_label = tk.Label(self, text='Summary data file:')
+        self.summary_text = tk.StringVar()
+        self.summary_directory = tk.Label(self, textvariable=self.summary_text)
+        self.summary_chooser = tk.Button(self, text='Choose Summary Data', command=self.choose_summary_data)
+        self.raw_label = tk.Label(self, text='Raw data file:')
+        self.raw_text = tk.StringVar()
+        self.raw_directory = tk.Label(self, textvariable=self.raw_text)
+        self.raw_chooser = tk.Button(self, text='Choose Raw Data', command=self.choose_raw_data)
+
+        self.summary_label.grid(row=0, column=0)
+        self.summary_directory.grid(row=0, column=1)
+        self.summary_chooser.grid(row=0, column=2)
+        self.raw_label.grid(row=0, column=3)
+        self.raw_directory.grid(row=0, column=4)
+        self.raw_chooser.grid(row=0, column=5)
+
+        self.summary_directory = ""
+        self.raw_directory = ""
+
+    def choose_summary_data(self):
+        self.summary_directory = askopenfilename(initialdir=os.getcwd())
+        directory = (self.summary_directory[(self.summary_directory.rfind('/') + 1):]
+                    if len(self.summary_directory) > 25 else self.summary_directory)
+        self.summary_text.set(directory)
+
+    def choose_raw_data(self):
+        self.raw_directory = askopenfilename(initialdir=os.getcwd())
+        directory = (self.raw_directory[(self.raw_directory.rfind('/') + 1):]
+                    if len(self.raw_directory) > 25 else self.raw_directory)
+        self.raw_text.set(directory)
+
+    def delete(self):
+        for widget in [self.summary_label, self.summary_directory,
+                       self.summary_chooser, self.raw_label,
+                       self.raw_directory, self.raw_chooser]:
+            widget.grid_forget()
+            widget.destroy()
 
 class HistogramWindow(tk.Toplevel):
     def __init__(self, parent, df_runs, *args, **kwargs):
@@ -40,10 +104,9 @@ class HistogramWindow(tk.Toplevel):
         self.x_statistic = 'channel'
         self.counts, self.bins, self.bars = self.ax.hist(df_runs[self.x_statistic], edgecolor='black', bins=512)
 
-
         hist_var = tk.StringVar()
         hist_var.set(self.x_statistic)
-        options = {'channel', 'mean', 'stdv', 'median', 'max', 'min'}
+        options = {'channel', 'mean', 'stdv', 'median', 'max', 'min', 'duration_obs'}
         self.histogram_select = tk.OptionMenu(self, hist_var, *options, command=self.change_histogram)
         self.histogram_select.pack()
 
@@ -74,16 +137,16 @@ class HistogramWindow(tk.Toplevel):
         print('here')
         self.x_statistic = new_value
         if (self.x_statistic == 'channel'):
-            self.counts, self.bins, self.bars = self.ax.hist(df_runs[self.x_statistic], edgecolor='black', bins=512)
+            self.counts, self.bins, self.bars = self.ax.hist(self.data[self.x_statistic], edgecolor='black', bins=512)
         else:
-            self.counts, self.bins, self.bars = self.ax.hist(df_runs[self.x_statistic], edgecolor='black', bins=20)
+            self.counts, self.bins, self.bars = self.ax.hist(self.data[self.x_statistic], edgecolor='black', bins=20)
 
         self.data_label = self.ax.text(0.8, 0.8, self.x_statistic + ': ', verticalalignment='center',
                                           horizontalalignment='center', transform=self.ax.transAxes)
         self.fig.canvas.draw()
 
 class GraphWindow(tk.Toplevel):
-    def __init__(self, parent, df_channels, raw_data, df_runs, *args, **kwargs):
+    def __init__(self, parent, df_runs, raw_data, *args, **kwargs):
         tk.Toplevel.__init__(self, parent, *args, **kwargs)
         self.parent = parent
 
@@ -94,7 +157,6 @@ class GraphWindow(tk.Toplevel):
         varY = tk.StringVar()
         varY.set(self.yaxis)
         options = {'mean', 'stdv', 'median', 'max', 'min'}
-
         self.layout = tk.PanedWindow(self, sashpad=4, sashrelief=tk.RAISED)
         self.control_panel = tk.Frame(self.layout, width=20)
         self.graph = tk.Frame(self.layout)
@@ -137,13 +199,13 @@ class GraphWindow(tk.Toplevel):
         self.layout.add(self.graph)
         self.layout.paneconfigure(self.control_panel, sticky='nw')
         self.layout.paneconfigure(self.graph, sticky='nse')
-        self.layout.pack(fill = 'both', expand = True)
+        self.layout.pack(fill='both', expand=True)
 
         self.previousDataSets = []
         self.testSelectPoints = set()
-        self.data = df_channels
         self.raw_data = raw_data
         self.runs = df_runs
+        self.data = self.runs.groupby('channel')
         self.original_runs = self.runs
 
         self.fig,self.ax = plt.subplots()
@@ -410,7 +472,5 @@ def proper_exit():
 if __name__ == '__main__':
     root = tk.Tk()
     root.protocol('WM_DELETE_WINDOW', proper_exit)
-    df_runs = np.load(sys.argv[1], encoding = 'latin1')
-    raw_data = np.load(sys.argv[2], encoding = 'latin1')
-    ControlPanel(root, df_runs, raw_data).pack(side="top", fill="both", expand=True)
+    ControlPanel(root).pack(side="top", fill="both", expand=True)
     root.mainloop()
