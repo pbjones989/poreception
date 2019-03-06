@@ -57,11 +57,11 @@ class ControlPanel(tk.Frame):
 class MenuOptions(tk.Frame):
     def __init__(self, parent, *args, **kwargs):
         tk.Frame.__init__(self, parent, *args, **kwargs)
-        self.summary_label = tk.Label(self, text='Summary data file:')
+        self.summary_label = tk.Label(self, text='Summary data file:', font='TkDefaultFont 13 bold')
         self.summary_text = tk.StringVar()
         self.summary_directory = tk.Label(self, textvariable=self.summary_text)
         self.summary_chooser = tk.Button(self, text='Choose Summary Data', command=self.choose_summary_data)
-        self.raw_label = tk.Label(self, text='Raw data file:')
+        self.raw_label = tk.Label(self, text='Raw data file:', font='TkDefaultFont 13 bold')
         self.raw_text = tk.StringVar()
         self.raw_directory = tk.Label(self, textvariable=self.raw_text)
         self.raw_chooser = tk.Button(self, text='Choose Raw Data', command=self.choose_raw_data)
