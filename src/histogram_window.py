@@ -24,13 +24,21 @@ class HistogramWindow(tk.Toplevel):
         hist_var = tk.StringVar()
         hist_var.set(self.x_statistic)
         options = {'channel', 'mean', 'stdv', 'median', 'max', 'min', 'duration_obs'}
-        self.histogram_select = tk.OptionMenu(self, hist_var, *options, command=self.change_histogram)
-        self.histogram_select.pack()
+        histogram_select = tk.OptionMenu(self, hist_var, *options, command=self.change_histogram)
+        cutoff_label = tk.Label(self, text='Cutoff:')
+        self.histogram_cutoff = tk.Entry(self)
+        delete_cutoff = tk.Button(self, text='Delete Above Cutoff', command=self.delete_above_cutoff)
+        histogram_select.grid(row=0, column=0)
+        cutoff_label.grid(row=0, column=1)
+        self.histogram_cutoff.grid(row=0, column=2)
+        delete_cutoff.grid(row=0, column=3)
 
         canvas = FigureCanvasTkAgg(self.fig, self)
         canvas.draw()
-        canvas.get_tk_widget().pack(side=tk.BOTTOM, fill=tk.BOTH, expand=True)
-        toolbar = NavigationToolbar2Tk(canvas, self)
+        canvas.get_tk_widget().grid(row=2, column=0, columnspan=4)
+        toolbar_frame = tk.Frame(self)
+        toolbar_frame.grid(row=1, column=0, columnspan=4)
+        toolbar = NavigationToolbar2Tk(canvas, toolbar_frame)
         toolbar.update()
 
         self.data_label = self.ax.text(0.8, 0.8, self.x_statistic + ': ', verticalalignment='center',
@@ -48,6 +56,20 @@ class HistogramWindow(tk.Toplevel):
                     label = str(round(self.bins[self.bars.index(bar)],2))
                 self.data_label.set_text(self.x_statistic + ': ' + label)
                 self.fig.canvas.draw()
+
+    def delete_above_cutoff(self):
+        cutoff = self.histogram_cutoff.get()
+        try:
+            cutoff = float(cutoff)
+            to_remove = []
+            for i in range(0, len(self.counts)):
+                if (self.counts[i] >= cutoff):
+                    to_remove.append(i + 1)
+            self.parent.delete_group(to_remove)
+            self.data = self.parent.runs
+            self.change_histogram(self.x_statistic)
+        except ValueError:
+           messagebox.showinfo("Cutoff must be a number")
 
     def change_histogram(self, new_value):
         self.ax.cla()

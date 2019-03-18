@@ -1,7 +1,6 @@
 import sys
 import os
 import tkinter as tk
-from tkinter import messagebox
 import numpy as np
 import pandas as pd
 import matplotlib

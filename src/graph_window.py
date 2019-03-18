@@ -1,7 +1,6 @@
 import sys
 import os
 import tkinter as tk
-from tkinter import messagebox
 import numpy as np
 import pandas as pd
 import matplotlib
@@ -27,7 +26,7 @@ class GraphWindow(tk.Toplevel):
         varY.set(self.yaxis)
         var_group = tk.StringVar()
         var_group.set(self.group_category)
-        options = {'mean', 'stdv', 'median', 'max', 'min'}
+        options = {'mean', 'stdv', 'median', 'max', 'min', 'duration_obs'}
         group_options = {'channel', 'run'}
         layout = tk.PanedWindow(self, sashpad=4, sashrelief=tk.RAISED)
         control_panel = tk.Frame(layout, width=20)
@@ -172,12 +171,13 @@ class GraphWindow(tk.Toplevel):
                     self.selected_points.add(index)
             self.update()
 
-    def delete_group(self):
-        to_delete = []
-        if self.group_category == 'channel':
-            to_delete = [int(name.strip()) for name in self.deleteChannel.get().split(',')]
-        else:
-            to_delete = [name.strip() for name in self.deleteChannel.get().split(',')]
+    def delete_group(self, to_delete=None):
+        if not to_delete:
+            to_delete = []
+            if self.group_category == 'channel':
+                to_delete = [int(name.strip()) for name in self.deleteChannel.get().split(',')]
+            else:
+                to_delete = [name.strip() for name in self.deleteChannel.get().split(',')]
         for name in to_delete:
             if name in self.data.groups:
                 oldRuns = self.runs
