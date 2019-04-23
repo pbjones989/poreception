@@ -1,5 +1,6 @@
 import sys
 import os
+import h5py
 import tkinter as tk
 import numpy as np
 import pandas as pd
@@ -103,17 +104,14 @@ class GraphWindow(tk.Toplevel):
         self.rs.set_active(False)
 
     def export_data(self):
-        path = self.export_path.get()
-        raw_path = path + "_raw_data"
-        summary_path = path + "_summary_data.pkl"
-        rows = []
+        new_file_name = self.export_path.get() + ".hdf5"
+        export_runs = self.runs.reset_index(drop=True)
+        export_runs.to_hdf(new_file_name, key="summary", mode="w")
+        new_file = h5py.File(new_file_name, "a")
+        new_grp = new_file.create_group('raw')
         for i in range(0, len(self.runs.index)):
             index = int(self.runs.iloc[i, :].name)
-            rows.append(self.raw_data[index])
-        export_raw = np.asarray(rows)
-        np.save(raw_path, export_raw)
-        export_runs = self.runs.reset_index(drop=True)
-        export_runs.to_pickle(summary_path)
+            new_grp.create_dataset(str(i), data=self.raw_data[index])
 
     def regroup_data(self):
         self.data = self.runs.groupby(self.group_category)

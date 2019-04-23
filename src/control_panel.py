@@ -3,6 +3,7 @@ import os
 import tkinter as tk
 from tkinter import messagebox
 import numpy as np
+import h5py
 import pandas as pd
 import matplotlib
 matplotlib.use("TkAgg")
@@ -10,7 +11,7 @@ from tkinter.filedialog import askopenfilename
 from matplotlib.widgets import RectangleSelector
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
-from menu_options import MenuOptions
+from h5_menu_options import H5MenuOptions
 from graph_window import GraphWindow
 
 class ControlPanel(tk.Frame):
@@ -33,12 +34,15 @@ class ControlPanel(tk.Frame):
             summary_data = pd.DataFrame()
             raw_data = []
             for menu_option in self.data_sets:
-                if os.path.exists(menu_option.summary_directory) and os.path.exists(menu_option.raw_directory):
-                    new_summary = np.load(menu_option.summary_directory, encoding = 'latin1')
+                if os.path.exists(menu_option.h5_directory):
+                    h5_file = h5py.File(menu_option.h5_directory, 'r')
+                    new_summary = pd.read_hdf(menu_option.h5_directory, key='summary')
                     if isinstance(new_summary['channel'][0], str):
                         new_summary['channel'] = new_summary['channel'].map(lambda s: int(s[8:]))
                     summary_data = summary_data.append(new_summary)
-                    raw_data.extend(np.load(menu_option.raw_directory, encoding = 'latin1').tolist())
+                    raw_group = h5_file['raw']
+                    for i in range(len(raw_group.keys())):
+                        raw_data.append(raw_group[str(i)][()])
                 else:
                     messagebox.showinfo("No File Found",
                             "Could not find data files\n    given summary: "
@@ -49,7 +53,7 @@ class ControlPanel(tk.Frame):
             GraphWindow(self, summary_data, np.asarray(raw_data))
 
     def add_data_set(self):
-        new_menu_option = MenuOptions(self)
+        new_menu_option = H5MenuOptions(self)
         new_menu_option.grid(row=self.data_row, columnspan=3)
         self.data_row += 1
         self.data_sets.append(new_menu_option)

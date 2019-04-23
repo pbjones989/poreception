@@ -57,20 +57,20 @@ class RawDataWindow(tk.Toplevel):
         self.logLines.pop(index, None)
         todeleteRaw.remove()
         todeleteLog.remove()
-        self.parent.testSelectPoints.remove(index)
+        self.parent.selected_points.remove(index)
         self.parent.update()
         self.fig.canvas.draw()
         self.update_axes()
 
     def addDataToParent(self):
         for index in self.rawLines.keys():
-            self.parent.testSelectPoints.add(index)
+            self.parent.selected_points.add(index)
         self.parent.update()
 
     def removeDataFromParent(self):
         for index in self.rawLines.keys():
-            if index in self.parent.testSelectPoints:
-                self.parent.testSelectPoints.remove(index)
+            if index in self.parent.selected_points:
+                self.parent.selected_points.remove(index)
         self.parent.update()
 
     def update_axes(self):
