@@ -25,10 +25,10 @@ class ConvertPanel(tk.Frame):
 
     def export_data(self):
         if os.path.exists(self.files.summary_directory) and os.path.exists(self.files.raw_directory):
-            summary_data = np.load(self.files.summary_directory, encoding = 'latin1')
+            summary_data = np.load(self.files.summary_directory, allow_pickle=True, encoding = 'latin1')
             if isinstance(summary_data['channel'][0], str):
                 summary_data['channel'] = summary_data['channel'].map(lambda s: int(s[8:]))
-            raw_data = np.load(self.files.raw_directory, encoding = 'latin1')
+            raw_data = np.load(self.files.raw_directory, allow_pickle=True, encoding = 'latin1')
             new_file_name = self.file_name.get() + ".hdf5"
             summary_data.to_hdf(new_file_name, key="summary", mode="w")
             new_file = h5py.File(new_file_name, "a")
