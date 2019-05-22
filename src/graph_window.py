@@ -1,4 +1,5 @@
 import sys
+import time
 import os
 import h5py
 import tkinter as tk
@@ -78,8 +79,8 @@ class GraphWindow(tk.Toplevel):
 
         self.fig, self.ax = plt.subplots()
 
-        xs = [self.runs.iloc[data][self.xaxis] for data in self.selected_points]
-        ys = [self.runs.iloc[data][self.yaxis] for data in self.selected_points]
+        xs = [self.original_runs.at[data, self.xaxis] for data in self.selected_points]
+        ys = [self.original_runs.at[data, self.yaxis] for data in self.selected_points]
         self.selected, = self.ax.plot(xs, ys, 'o', ms=10, alpha=.8, color='red', visible=False)
 
         self.lines = []
@@ -162,11 +163,8 @@ class GraphWindow(tk.Toplevel):
         if self.isBox.get():
             x_1, y_1 = eclick.xdata, eclick.ydata
             x_2, y_2 = erelease.xdata, erelease.ydata
-            for i in range(0, len(self.runs.index)):
-                index = int(self.runs.iloc[i, :].name)
-                row = self.original_runs.iloc[index, :]
-                if row[self.xaxis] >= x_1 and row[self.xaxis] <= x_2 and row[self.yaxis] >= y_1 and row[self.yaxis] <= y_2:
-                    self.selected_points.add(index)
+            self.selected_points.update(self.runs[(self.runs[self.xaxis] >= x_1) & (self.runs[self.xaxis] <= x_2) \
+                                                    & (self.runs[self.yaxis] >= y_1) & (self.runs[self.yaxis] <= y_2)].index)
             self.update()
 
     def delete_group(self, to_delete=None):
@@ -178,17 +176,24 @@ class GraphWindow(tk.Toplevel):
                 to_delete = [name.strip() for name in self.deleteChannel.get().split(',')]
         for name in to_delete:
             if name in self.data.groups:
+                # RESET INDEX?
                 oldRuns = self.runs
-                self.runs = self.data.filter(lambda x : x.name != name)
+                self.runs = self.runs[self.runs[self.group_category] != name]
                 self.data = self.runs.groupby(self.group_category)
                 self.previousDataSets.append(oldRuns)
         self.update_lines()
 
+    def update_runs(self, new_runs):
+        oldRuns = self.runs
+        self.runs = new_runs
+        self.data = self.runs.groupby(self.group_category)
+        self.previousDataSets.append(oldRuns)
+        self.update_lines()
+    
     def delete_unselected(self):
         oldRuns = self.runs
-        for index, row in self.runs.iterrows():
-            if int(row.name) not in self.selected_points:
-                self.runs = self.runs.drop(index)
+        toKeep = [i in self.selected_points for i in range(0, len(self.runs.index))]
+        self.runs = self.runs.loc[toKeep]
         self.data = self.runs.groupby(self.group_category)
         self.previousDataSets.append(oldRuns)
         self.update_lines()
@@ -269,8 +274,8 @@ class GraphWindow(tk.Toplevel):
 
     def update(self):
         self.selected.set_visible(True)
-        xs = [self.original_runs.iloc[data][self.xaxis] for data in self.selected_points]
-        ys = [self.original_runs.iloc[data][self.yaxis] for data in self.selected_points]
+        xs = [self.original_runs.at[data, self.xaxis] for data in self.selected_points]
+        ys = [self.original_runs.at[data, self.yaxis] for data in self.selected_points]
         self.selected.set_data(xs, ys)
         self.fig.canvas.draw()
 
