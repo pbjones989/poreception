@@ -1,4 +1,5 @@
 import sys
+import time
 import os
 import tkinter as tk
 from tkinter import messagebox
@@ -41,8 +42,8 @@ class ControlPanel(tk.Frame):
                         new_summary['channel'] = new_summary['channel'].map(lambda s: int(s[8:]))
                     summary_data = summary_data.append(new_summary)
                     raw_group = h5_file['raw']
-                    for i in range(len(raw_group.keys())):
-                        raw_data.append(raw_group[str(i)][()])
+                    new_raw_data = [raw_group[str(i)][()] for i in range(len(raw_group.keys()))]
+                    raw_data.extend(new_raw_data)
                 else:
                     messagebox.showinfo("No File Found",
                             "Could not find data files\n    given summary: "
