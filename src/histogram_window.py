@@ -20,53 +20,61 @@ class HistogramWindow(tk.Toplevel):
         self.fig, self.ax = plt.subplots()
         self.x_statistic = 'channel'
         self.counts, self.bins, self.bars = self.plot_by_run()
-
+        
+        # General control
+        control_frame = tk.Frame(self, borderwidth=1, relief="solid")
         hist_var = tk.StringVar()
         hist_var.set(self.x_statistic)
         options = {'channel', 'mean', 'stdv', 'median', 'max', 'min', 'duration_obs'}
-        histogram_select = tk.OptionMenu(self, hist_var, *options, command=self.change_histogram)
-        channel_cutoff_label = tk.Label(self, text='Channel Cutoff:')
-        self.channel_cutoff = tk.Entry(self)
-        delete_channel_cutoff = tk.Button(self, text='Delete Above Cutoff', command=self.delete_above_cutoff)
-        range_lower_label = tk.Label(self, text='Statistic Range Lower:')
-        self.range_lower = tk.Entry(self)
-        range_upper_label = tk.Label(self, text='Statistic Range Upper:')
-        self.range_upper = tk.Entry(self)
-        delete_range = tk.Button(self, text='Delete Specified Range', command=self.delete_in_range)
+        histogram_select = tk.OptionMenu(control_frame, hist_var, *options, command=self.change_histogram)
+        undo_delete_button = tk.Button(control_frame, text='Undo last deletion', command=self.undo_delete)
         histogram_select.grid(row=0, column=0)
-        channel_cutoff_label.grid(row=0, column=1)
-        self.channel_cutoff.grid(row=0, column=2, columnspan=3)
-        delete_channel_cutoff.grid(row=0, column=5)
+        undo_delete_button.grid(row=1, column=0, sticky="s")
 
-        range_lower_label.grid(row=1, column=1)
-        self.range_lower.grid(row=1, column=2)
-        range_upper_label.grid(row=1, column=3)
-        self.range_upper.grid(row=1, column=4)
-        delete_range.grid(row=1, column=5)
+        # For deleting by Channel
+        channel_delete_frame = tk.Frame(self, borderwidth=1, relief="solid")
+        channel_cutoff_label = tk.Label(channel_delete_frame, text='Channel Cutoff:')
+        self.channel_cutoff = tk.Entry(channel_delete_frame)
+        delete_channel_cutoff = tk.Button(channel_delete_frame, text='Delete Above Cutoff', command=self.delete_above_cutoff)
 
+        channel_cutoff_label.grid(row=0, column=0)
+        self.channel_cutoff.grid(row=0, column=1)
+        delete_channel_cutoff.grid(row=1, column=0, columnspan=2, sticky="s")
+
+        # For deleting by range
+        range_delete_frame = tk.Frame(self, borderwidth=1, relief="solid")
+        range_run_label = tk.Label(range_delete_frame, text='Run:')
+        self.range_run = tk.Entry(range_delete_frame)
+        range_lower_label = tk.Label(range_delete_frame, text='Statistic Range Lower:')
+        self.range_lower = tk.Entry(range_delete_frame)
+        range_upper_label = tk.Label(range_delete_frame, text='Statistic Range Upper:')
+        self.range_upper = tk.Entry(range_delete_frame)
+        delete_range = tk.Button(range_delete_frame, text='Delete Specified Range', command=self.delete_in_range)
+
+        range_run_label.grid(row=0, column=0, columnspan=2)
+        self.range_run.grid(row=0, column=2, columnspan=2)
+        range_lower_label.grid(row=1, column=0)
+        self.range_lower.grid(row=1, column=1)
+        range_upper_label.grid(row=1, column=2)
+        self.range_upper.grid(row=1, column=3)
+        delete_range.grid(row=2, column=0, columnspan=4)
+
+        # Set up canvas
+        # TODO: try expand=True
         canvas = FigureCanvasTkAgg(self.fig, self)
         canvas.draw()
-        canvas.get_tk_widget().grid(row=3, column=0, columnspan=6)
         toolbar_frame = tk.Frame(self)
-        toolbar_frame.grid(row=2, column=0, columnspan=6)
-        toolbar = NavigationToolbar2Tk(canvas, toolbar_frame)
-        toolbar.update()
+        self.toolbar = NavigationToolbar2Tk(canvas, toolbar_frame)
+        self.toolbar.focus()
+        self.toolbar.update()
 
-        self.data_label = self.ax.text(0.8, 0.8, self.x_statistic + ': ', verticalalignment='center',
-                                          horizontalalignment='center', transform=self.ax.transAxes)
-        self.fig.canvas.mpl_connect("motion_notify_event", self.hover)
+        # Top level grid layout
+        control_frame.grid(row=0, column=0, sticky="ns")
+        channel_delete_frame.grid(row=0, column=1, sticky="ns")
+        range_delete_frame.grid(row=0, column=2, sticky="ns")
+        canvas.get_tk_widget().grid(row=2, column=0, columnspan=3, sticky="nsew")
+        toolbar_frame.grid(row=1, column=0, columnspan=3, sticky="s")
 
-    def hover(self, event):
-        for bar_container in self.bars:
-            cont = any(bar.contains(event)[0] for bar in bar_container)
-            if cont:
-                label = ''
-                if self.x_statistic == 'channel':
-                    label = str(self.bars.index(bar_container) + 1)
-                else:
-                    label = str(round(self.bins[self.bars.index(bar_container)],2))
-                self.data_label.set_text(self.x_statistic + ': ' + label)
-                self.fig.canvas.draw()
 
     def delete_above_cutoff(self):
         if self.x_statistic == 'channel':
@@ -89,13 +97,14 @@ class HistogramWindow(tk.Toplevel):
         if self.x_statistic != 'channel':
             lower = self.range_lower.get()
             upper = self.range_upper.get()
+            run = self.range_run.get()
             try:
-                # TODO: Not done here lol
                 xmin, xmax, ymin, ymax = self.ax.axis()
                 lower = xmin if isinstance(lower, str) and lower.lower() == 'min' else float(lower)
                 upper = xmax if isinstance(upper, str) and upper.lower() == 'max' else float(upper)
-                to_keep = self.parent.runs[(self.parent.runs[self.x_statistic] < lower) | \
-                                           (self.parent.runs[self.x_statistic] > upper)]
+                to_keep = self.parent.runs[(self.parent.runs['run'] != run) |  \
+                                           ((self.parent.runs[self.x_statistic] < lower) | \
+                                           (self.parent.runs[self.x_statistic] > upper))]
                 self.parent.update_runs(to_keep)
                 self.data = to_keep
                 self.change_histogram(self.x_statistic)
@@ -105,7 +114,7 @@ class HistogramWindow(tk.Toplevel):
     def plot_by_run(self):
         run_groups = self.data.groupby('run')
         plot_groups = [run_groups.get_group(key)[self.x_statistic] for key in run_groups.groups.keys()]
-        plot_groups.append([])
+        #plot_groups.append([])
         bins = 512 if self.x_statistic == 'channel' else 20
         result = self.ax.hist(plot_groups, bins=bins)
         self.ax.legend(run_groups.groups.keys())
@@ -124,7 +133,11 @@ class HistogramWindow(tk.Toplevel):
             self.range_lower.config(state=tk.NORMAL)
 
         self.counts, self.bins, self.bars = self.plot_by_run()
-        self.data_label = self.ax.text(0.8, 0.8, self.x_statistic + ': ', verticalalignment='center',
-                                          horizontalalignment='center', transform=self.ax.transAxes)
         self.fig.canvas.draw()
-
+        self.toolbar.focus()
+        self.toolbar.update()
+    
+    def undo_delete(self):
+        self.parent.undo_delete()
+        self.data = self.parent.runs
+        self.change_histogram(self.x_statistic)
