@@ -26,10 +26,13 @@ class HistogramWindow(tk.Toplevel):
         hist_var = tk.StringVar()
         hist_var.set(self.x_statistic)
         options = {'channel', 'mean', 'stdv', 'median', 'max', 'min', 'duration_obs'}
+        histogram_x_label = tk.Label(control_frame, text='x statistic:')
         histogram_select = tk.OptionMenu(control_frame, hist_var, *options, command=self.change_histogram)
         undo_delete_button = tk.Button(control_frame, text='Undo last deletion', command=self.undo_delete)
+        
         histogram_select.grid(row=0, column=0)
-        undo_delete_button.grid(row=1, column=0, sticky="s")
+        histogram_x_label.grid(row=0, column=1)
+        undo_delete_button.grid(row=1, column=0, columnspan=2, sticky="s")
 
         # For deleting by Channel
         channel_delete_frame = tk.Frame(self, borderwidth=1, relief="solid")
@@ -72,8 +75,9 @@ class HistogramWindow(tk.Toplevel):
         control_frame.grid(row=0, column=0, sticky="ns")
         channel_delete_frame.grid(row=0, column=1, sticky="ns")
         range_delete_frame.grid(row=0, column=2, sticky="ns")
-        canvas.get_tk_widget().grid(row=2, column=0, columnspan=3, sticky="nsew")
         toolbar_frame.grid(row=1, column=0, columnspan=3, sticky="s")
+        canvas.get_tk_widget().grid(row=2, column=0, columnspan=3, sticky="nsew")
+
 
 
     def delete_above_cutoff(self):

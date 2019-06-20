@@ -4,3 +4,4 @@ data/*
 *.npy
 *.pkl
 src/*.hdf5
+test_multifast5/
