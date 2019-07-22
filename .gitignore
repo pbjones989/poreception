@@ -5,3 +5,4 @@ data/*
 *.pkl
 src/*.hdf5
 test_multifast5/
+src/.vscode/
