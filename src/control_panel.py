@@ -32,26 +32,41 @@ class ControlPanel(tk.Frame):
 
     def show_graph(self):
         if self.data_sets:
-            summary_data = pd.DataFrame()
+            summary_data = {'run':[], 'channel':[], 'start_obs':[],
+                            'end_obs':[], 'duration_obs':[], 'mean':[], 
+                            'stdv':[], 'median':[], 'min':[], 'max':[], 
+                            'open_channel':[]}
             raw_data = []
             for menu_option in self.data_sets:
                 if os.path.exists(menu_option.h5_directory):
-                    h5_file = h5py.File(menu_option.h5_directory, 'r')
-                    new_summary = pd.read_hdf(menu_option.h5_directory, key='summary')
-                    if isinstance(new_summary['channel'][0], str):
-                        new_summary['channel'] = new_summary['channel'].map(lambda s: int(s[8:]))
-                    summary_data = summary_data.append(new_summary)
-                    raw_group = h5_file['raw']
-                    new_raw_data = [raw_group[str(i)][()] for i in range(len(raw_group.keys()))]
-                    raw_data.extend(new_raw_data)
-                else:
-                    messagebox.showinfo("No File Found",
-                            "Could not find data files\n    given summary: "
-                            + menu_option.summary_directory +
-                            "\n    given raw: " + menu_option.raw_directory)
-                    return
-            summary_data = summary_data.reset_index(drop=True)
-            GraphWindow(self, summary_data, np.asarray(raw_data))
+                    for multi_fast5_path in os.listdir(menu_option.h5_directory):
+                        multi_fast5_path = os.path.join(menu_option.h5_directory, multi_fast5_path)
+                        multi_fast5 = h5py.File(multi_fast5_path, 'r')
+                        self.add_multi_fast5(multi_fast5, summary_data, raw_data)
+                
+            summary_df = pd.DataFrame(data=summary_data)
+            summary_df = summary_df.reset_index(drop=True)
+            GraphWindow(self, summary_df, np.array(raw_data))                
+
+    def add_multi_fast5(self, multi_fast5, summary_data, raw_data):
+        for read_name in multi_fast5.keys():
+            read = multi_fast5[read_name]
+            read_raw_data = read['Raw']
+            channel_info = read['channel_id']
+
+            summary_data['run'].append(read.attrs['run_id'])
+            summary_data['channel'].append(channel_info.attrs['channel_number'])
+            summary_data['start_obs'].append(read_raw_data.attrs['start_obs'])
+            summary_data['end_obs'].append(read_raw_data.attrs['end_obs'])
+            summary_data['duration_obs'].append(read_raw_data.attrs['duration_obs'])
+            summary_data['mean'].append(read_raw_data.attrs['mean'])
+            summary_data['stdv'].append(read_raw_data.attrs['stdv'])
+            summary_data['median'].append(read_raw_data.attrs['median'])
+            summary_data['min'].append(read_raw_data.attrs['min'])
+            summary_data['max'].append(read_raw_data.attrs['max'])
+            summary_data['open_channel'].append(channel_info.attrs['open_channel_current'])
+
+            raw_data.append(read_raw_data['Signal'][()])
 
     def add_data_set(self):
         new_menu_option = H5MenuOptions(self)

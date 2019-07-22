@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import matplotlib
 matplotlib.use("TkAgg")
-from tkinter.filedialog import askopenfilename
+from tkinter.filedialog import askdirectory
 from matplotlib.widgets import RectangleSelector
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
@@ -25,10 +25,10 @@ class H5MenuOptions(tk.Frame):
         self.h5_directory = ""
 
     def choose_h5_data(self):
-        self.h5_directory = askopenfilename(initialdir=os.getcwd())
-        directory = (self.h5_directory[(self.h5_directory.rfind('/') + 1):]
-                    if len(self.h5_directory) > 25 else self.h5_directory)
-        self.h5_text.set(directory)
+        self.h5_directory = askdirectory(initialdir=os.getcwd())
+        # directory = (self.h5_directory[(self.h5_directory.rfind('/') + 1):]
+        #             if len(self.h5_directory) > 25 else self.h5_directory)
+        self.h5_text.set(self.h5_directory)
 
     def delete(self):
         for widget in [self.h5_label, self.h5_directory,
