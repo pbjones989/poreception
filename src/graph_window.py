@@ -8,6 +8,7 @@ import pandas as pd
 import matplotlib
 matplotlib.use("TkAgg")
 from tkinter.filedialog import askopenfilename
+from tkinter import messagebox
 from matplotlib.widgets import RectangleSelector
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
@@ -80,7 +81,7 @@ class GraphWindow(tk.Toplevel):
         export_frame = tk.Frame(self, borderwidth=1, relief="solid")
         export_data_button = tk.Button(export_frame, text='Export Data', width=15, command=self.export_data)
         self.export_path = tk.Entry(export_frame)
-        export_description = tk.Label(export_frame, text="Path to export to (including name)")
+        export_description = tk.Label(export_frame, text="Folder to export to (including name)")
         export_description.grid(row=0, column=0)
         self.export_path.grid(row=0, column=1)
         export_data_button.grid(row=1, column=0, columnspan=2, sticky='s')
@@ -139,16 +140,50 @@ class GraphWindow(tk.Toplevel):
         self.grid_columnconfigure(1, weight=1)
         self.grid_columnconfigure(2, weight=1)
 
-
     def export_data(self):
-        new_file_name = self.export_path.get() + ".hdf5"
-        export_runs = self.runs.reset_index(drop=True)
-        export_runs.to_hdf(new_file_name, key="summary", mode="w")
-        new_file = h5py.File(new_file_name, "a")
-        new_grp = new_file.create_group('raw')
-        for i in range(0, len(self.runs.index)):
-            index = int(self.runs.iloc[i, :].name)
-            new_grp.create_dataset(str(i), data=self.raw_data[index])
+        new_folder_name = self.export_path.get()
+        if os.path.exists(new_folder_name):
+            messagebox.showinfo("Folder already exists: " + new_folder_name)
+        else:
+            os.mkdir(new_folder_name)
+            fast5_folder = os.path.join(new_folder_name, "fast5")
+            os.mkdir(fast5_folder)
+            file_number = 0
+            fast5_count = 0
+            max_fast5_per_file = 4000
+            for i in range(0, len(self.runs.index)):
+                if fast5_count == max_fast5_per_file:
+                    file_number += 1
+                    fast5_count = 0
+                fast5_file_name = os.path.join(fast5_folder, 
+                                               "raw_fast5_" + str(file_number))
+                row = self.runs.iloc[i]
+                self.add_row_to_fast5(int(row.name), fast5_file_name, row, fast5_count)
+                fast5_count += 1
+
+    def add_row_to_fast5(self, index, fast5_file_name, row, read_no):
+        fast5_file = h5py.File(fast5_file_name, 'a')
+        g = fast5_file.create_group("/Read_%d" % read_no)
+        attrs = g.attrs
+        attrs['run_id'] = row['run']
+        g_1 = g.create_group("Raw")
+        g_1.create_dataset("Signal", data=self.raw_data[index], compression="gzip")
+        attrs = g_1.attrs
+        attrs['mean'] = row['mean']
+        attrs['median'] = row['median']
+        attrs['min'] = row['min']
+        attrs['max'] = row['max']
+        attrs['stdv'] = row['stdv']
+        attrs['start_obs'] = row['start_obs']
+        attrs['end_obs'] = row['end_obs']
+        attrs['duration_obs'] = row['duration_obs']
+        g_1 = g.create_group("channel_id")
+        attrs = g_1.attrs
+        attrs['open_channel_current'] = row['open_channel']
+        attrs['channel_number'] = row['channel']
+
+
+
 
     def regroup_data(self):
         self.data = self.runs.groupby(self.group_category)
@@ -228,7 +263,7 @@ class GraphWindow(tk.Toplevel):
     
     def delete_unselected(self):
         oldRuns = self.runs
-        toKeep = [i in self.selected_points for i in range(0, len(self.runs.index))]
+        toKeep = [int(self.runs.iloc[i].name) in self.selected_points for i in range(0, len(self.runs.index))]
         self.runs = self.runs.loc[toKeep]
         self.data = self.runs.groupby(self.group_category)
         self.previousDataSets.append(oldRuns)

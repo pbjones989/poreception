@@ -13,10 +13,10 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolb
 class H5MenuOptions(tk.Frame):
     def __init__(self, parent, *args, **kwargs):
         tk.Frame.__init__(self, parent, *args, **kwargs)
-        self.h5_label = tk.Label(self, text='HFD5 data file:', font='TkDefaultFont 13 bold')
+        self.h5_label = tk.Label(self, text='Multifast5 folder:', font='TkDefaultFont 13 bold')
         self.h5_text = tk.StringVar()
         self.h5_directory = tk.Label(self, textvariable=self.h5_text)
-        self.h5_chooser = tk.Button(self, text='Choose HFD5 File', command=self.choose_h5_data)
+        self.h5_chooser = tk.Button(self, text='Choose HFD5 Folder', command=self.choose_h5_data)
 
         self.h5_label.grid(row=0, column=0)
         self.h5_directory.grid(row=0, column=1)
@@ -26,8 +26,6 @@ class H5MenuOptions(tk.Frame):
 
     def choose_h5_data(self):
         self.h5_directory = askdirectory(initialdir=os.getcwd())
-        # directory = (self.h5_directory[(self.h5_directory.rfind('/') + 1):]
-        #             if len(self.h5_directory) > 25 else self.h5_directory)
         self.h5_text.set(self.h5_directory)
 
     def delete(self):
