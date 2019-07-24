@@ -228,7 +228,7 @@ class GraphWindow(tk.Toplevel):
     
     def delete_unselected(self):
         oldRuns = self.runs
-        toKeep = [i in self.selected_points for i in range(0, len(self.runs.index))]
+        toKeep = [int(self.runs.iloc[i].name) in self.selected_points for i in range(0, len(self.runs.index))]
         self.runs = self.runs.loc[toKeep]
         self.data = self.runs.groupby(self.group_category)
         self.previousDataSets.append(oldRuns)
